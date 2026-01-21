@@ -1,0 +1,150 @@
+Basic Selection: Retrieve the titles and publication years of all books published after 2000, ordered by publication year (newest first).
+
+SELECT
+title,
+publication_year
+FROM Books
+WHERE publication_year > 2000
+ORDER BY publication_year DESC;
+
+Filtering: Find all books with more than 5 copies owned in the fiction genre (genre_id = 1).
+
+SELECT
+book_id,
+title,
+genre_id,
+copies_owned
+FROM Books
+WHERE genre_id =1 AND copies_owned > 5;
+
+Pattern Matching: List all books whose titles contain the word "History".
+
+SELECT 
+book_id,
+title
+FROM Books
+WHERE title LIKE '%history%';
+
+JOIN Operations: Display loan information (loan_id, checkout_date, due_date) along with patron details (first_name, last_name, email) for all loans made in January 2023.
+
+SELECT
+l.loan_id,
+l.checkout_date,
+l.due_date,
+p.first_name,
+p.last_name,
+p.email
+FROM loans l
+JOIN patrons p
+ON l.patron_id = p.patron_id
+WHERE l.checkout_date >= '2023-01-01'
+AND l.checkout_date < '2023-02-01';
+
+Multi-table JOIN: Show book details (title, author's full name, genre_name) for each loan, along with the checkout_date and due_date.
+
+SELECT
+b.title,
+a.first_name,
+a.last_name,
+g.genre_name,
+l.checkout_date,
+l.due_date
+FROM loans l
+JOIN books b
+ON l.book_id = b.book_id
+JOIN authors a ON b.author_id = a.author_id
+JOIN genres g
+ON b.genre_id = g.genre_id
+ORDER BY l.checkout_date;
+
+Self JOIN: Find pairs of patrons who live in the same city. Show both patrons' names and their city.
+
+SELECT
+p1.first_name,
+p1.last_name,
+p2.first_name,
+p2.last_name,
+p1.city
+FROM patrons p1
+JOIN patrons p2
+ON p1.city = p2.city
+AND p1.patron_id < p2.patron_id
+ORDER BY p1.city;
+
+Multi-table JOIN with filtering: Find all fiction books (genre_id = 1) that have been borrowed, along with the patron name and the branch where they were borrowed from.
+
+SELECT
+b.title,
+b.genre_id,
+p.first_name,
+p.last_name,
+br.branch_name
+FROM loans l
+JOIN books b
+ON l.book_id = b.book_id
+JOIN patrons p
+ON l.patron_id = p.patron_id
+JOIN branches br
+ON l.branch_id = br.branch_id
+WHERE b.genre_id = 1;
+
+COUNT aggregation: Count the number of books in each genre category.
+
+SELECT
+genre_id,
+COUNT(*) AS book_count
+FROM books
+GROUP BY genre_id;
+
+Multiple aggregations: Calculate the average, minimum, and maximum loan duration (days between checkout and return) for each library branch. Include only returned books.
+
+SELECT
+br.branch_name,
+ROUND(AVG(julianday(l.return_date) - julianday(l.checkout_date)), 2) AS avg_loan_days,
+MIN(julianday(l.return_date) - julianday(l.checkout_date)) AS min_loan_days,
+MAX(julianday(l.return_date) - julianday(l.checkout_date)) AS max_loan_days
+FROM loans l
+JOIN branches br
+ON l.branch_id = br.branch_id
+WHERE l.return_date IS NOT NULL
+GROUP BY br.branch_id, br.branch_name
+ORDER BY br.branch_name;
+
+Conditional aggregation: Find patrons with overdue books (due_date < CURRENT_DATE and return_date = ' '), along with the count of overdue books they have.
+
+SELECT
+p.patron_id,
+p.first_name,
+p.last_name,
+COUNT(*) AS overdue_count
+FROM patrons p
+JOIN loans l
+ON p.patron_id = l.patron_id
+WHERE l.due_date < date('now')
+AND (l.return_date IS NULL OR l.return_date = '')
+GROUP BY p.patron_id
+ORDER BY overdue_count DESC;
+
+Time-based analysis: Analyze monthly borrowing trends. Show the year, month, number of loans, and number of unique patrons for each month.
+
+SELECT
+strftime('%Y', checkout_date) AS year,
+strftime('%m', checkout_date) AS month,
+COUNT(*) AS number_of_loans,
+COUNT(DISTINCT patron_id) AS unique_patrons
+FROM loans
+GROUP BY year, month
+ORDER BY year, month;
+
+Write a query to create a simple data dictionary for the library database schema, listing table names, column names, data types, and whether they are primary keys.
+
+SELECT
+m.name AS table_name,
+p.name AS column_name,
+p.type AS data_type,
+p.pk AS is_primary_key
+FROM sqlite_master m
+JOIN pragma_table_info(m.name) p
+WHERE m.type = 'table'
+AND m.name NOT LIKE 'sqlite_%'
+ORDER BY table_name, p.cid;
